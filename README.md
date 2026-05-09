@@ -38,8 +38,6 @@ A unified corpus of multi-agent trajectories collected, filtered, and annotated 
 | Agentic   |   405 |   470 |   875 |
 | **TOTAL** | **1,162** | **1,114** | **2,276** |
 
-The released parquet uses six fine-grained `domain` labels (`math`, `coding`, `hotpotqa`, `gaia`, `toolsafety`, `expert_team`); the four interactive sub-domains (`hotpotqa`, `gaia`, `toolsafety`, `expert_team`) collectively form the **Agentic** macro-domain shown above. Pass `--macro-domain` to the inference scripts to aggregate metrics under the same 3-bucket grouping.
-
 ## Installation
 
 ```bash
@@ -83,7 +81,7 @@ python -m inference.infer_api \
     --output-dir  ./outputs/gpt41
 ```
 
-Add `--paper-test-split` to restrict to the held-out test split (332 trajectories) used in the paper, and `--macro-domain` to aggregate metrics by Math / Coding / Agentic.
+Add `--paper-test-split` to restrict to the held-out test split (332 trajectories) used in the paper.
 
 ## Main Results
 

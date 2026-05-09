@@ -44,6 +44,7 @@ from typing import Iterable
 MACRO_DOMAIN: dict[str, str] = {
     "math":        "Math",
     "coding":      "Coding",
+    "agentic":     "Agentic",
     "hotpotqa":    "Agentic",
     "gaia":        "Agentic",
     "toolsafety":  "Agentic",
