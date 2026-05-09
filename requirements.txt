@@ -1,0 +1,9 @@
+pandas>=2.0
+pyarrow>=14.0
+numpy>=1.24
+tqdm>=4.65
+# Local-model inference (inference/infer_local.py)
+torch>=2.4
+transformers>=4.45
+# OpenAI-compatible API inference (inference/infer_api.py)
+openai>=1.30
