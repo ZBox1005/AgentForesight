@@ -16,7 +16,7 @@
 
 **AgentForesight** reframes multi-agent failure analysis from *post-hoc diagnosis* of completed trajectories to *online auditing* of unfolding ones. At each step of an unfolding trajectory, an auditor observes only the current prefix and must either continue the run or alarm at the earliest decisive error, opening a runtime intervention window before downstream propagation locks in failure.
 
-We release **AFTraj-2K**, a curated corpus of $2{,}276$ multi-agent trajectories ($1{,}162$ safe + $1{,}114$ unsafe) across Coding, Math, and Agentic domains, and **AgentForesight-7B**, a compact online auditor trained with a coarse-to-fine reinforcement learning recipe.
+We release **AFTraj-2K**, a curated corpus of 2,276 multi-agent trajectories (1,162 safe + 1,114 unsafe) across Coding, Math, and Agentic domains, and **AgentForesight-7B**, a compact online auditor trained with a coarse-to-fine reinforcement learning recipe.
 
 <div align="center"><img src="assets/pipeline.png" width="92%"></div>
 
@@ -25,11 +25,11 @@ We release **AFTraj-2K**, a curated corpus of $2{,}276$ multi-agent trajectories
 - **Online auditing protocol** — We introduce *online auditing*, a deployment-time reframing of agentic failure analysis that audits unfolding trajectories step by step rather than diagnosing them after failure.
 - **AFTraj-2K dataset** — We construct AFTraj-2K, a curated corpus of agentic trajectories spanning Coding, Math, and Agentic domains, pairing strictly filtered safe runs with multi-judge verified failure runs annotated at their *decisive error* step
 - **A compact online auditor** — We develop *AgentForesight*-7B, a compact online auditor trained via a *coarse-to-fine* RL recipe that first equips it with a risk-anticipation prior at the failure boundary, then sharpens this prior into precise step-level localization under the structure, timing, and attribution optimization
-- ***AgentForesight*-7B outperforms larger proprietary judges** — $66.44$ overall Exact-F1 on AFTraj-2K, $+19.9$ points above DeepSeek-V4-Pro and a $3\times$ tighter Absolute Step Shift (ASS).
+- ***AgentForesight*-7B outperforms larger proprietary judges** — 66.44 overall Exact-F1 on AFTraj-2K, +19.9 points above DeepSeek-V4-Pro and a 3 $\times$ tighter Absolute Step Shift (ASS).
 
 ## AFTraj-2K Dataset
 
-A unified corpus of multi-agent trajectories collected, filtered, and annotated for online auditing. Hosted on HuggingFace: [ZBox008003/AFTraj](https://huggingface.co/datasets/ZBox008003/AFTraj).
+A unified corpus of multi-agent trajectories collected, filtered, and annotated for online auditing. Hosted on 🤗HuggingFace: [ZBox008003/AFTraj](https://huggingface.co/datasets/ZBox008003/AFTraj).
 
 | Domain | Safe | Unsafe | Total |
 |---|---:|---:|---:|
@@ -83,13 +83,13 @@ python -m inference.infer_api \
     --output-dir  ./outputs/gpt41
 ```
 
-Add `--paper-test-split` to restrict to the held-out test split ($332$ trajectories) used in the paper, and `--macro-domain` to aggregate metrics by Math / Coding / Agentic.
+Add `--paper-test-split` to restrict to the held-out test split (332 trajectories) used in the paper, and `--macro-domain` to aggregate metrics by Math / Coding / Agentic.
 
 ## Main Results
 
 <div align="center"><img src="assets/main_table.png" width="98%"></div>
 
-AgentForesight-7B reaches $66.44$ overall Exact-F1, $+19.88$ points above the strongest proprietary baseline DeepSeek-V4-Pro, with a $3\times$ tighter ASS and the largest gains on Math ($77.36$ vs $50.34$) and Coding ($78.87$ vs $49.32$).
+AgentForesight-7B reaches 66.44 overall Exact-F1, +19.88 points above the strongest proprietary baseline DeepSeek-V4-Pro, with a 3 $\times$ tighter ASS and the largest gains on Math (77.36 vs 50.34) and Coding (78.87 vs 49.32).
 
 The AgentForesight-7B checkpoint will be released on HuggingFace upon paper acceptance.
 
