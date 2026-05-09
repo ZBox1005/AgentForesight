@@ -22,10 +22,10 @@ We release **AFTraj-2K**, a curated corpus of $2{,}276$ multi-agent trajectories
 
 ## Key Highlights
 
-- **Online auditing protocol** — per-step continue-or-alarm verdict on prefix evidence, no access to future steps.
-- **Compact 7B auditor outperforms larger proprietary judges** — $66.44$ overall Exact-F1 on AFTraj-2K, $+19.9$ points above DeepSeek-V4-Pro and a $3\times$ tighter ASS.
-- **Three-axis verdict** — structured `{answer, agent, reason}` JSON over the *what*, *where*, and *who* of an audit verdict.
-- **Cross-framework generalization** — transfers cleanly to the external Who&When benchmark whose trajectories come from frameworks disjoint from AFTraj-2K.
+- **Online auditing protocol** — We introduce *online auditing*, a deployment-time reframing of agentic failure analysis that audits unfolding trajectories step by step rather than diagnosing them after failure.
+- **AFTraj-2K dataset** — We construct AFTraj-2K, a curated corpus of agentic trajectories spanning Coding, Math, and Agentic domains, pairing strictly filtered safe runs with multi-judge verified failure runs annotated at their *decisive error* step
+- **A compact online auditor** — We develop *AgentForesight*-7B, a compact online auditor trained via a *coarse-to-fine* RL recipe that first equips it with a risk-anticipation prior at the failure boundary, then sharpens this prior into precise step-level localization under the structure, timing, and attribution optimization
+- ***AgentForesight*-7B auditor outperforms larger proprietary judges** — $66.44$ overall Exact-F1 on AFTraj-2K, $+19.9$ points above DeepSeek-V4-Pro and a $3\times$ tighter Absolute Step Shift (ASS).
 
 ## AFTraj-2K Dataset
 
