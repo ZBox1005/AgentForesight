@@ -2,7 +2,7 @@
 
 <img src="assets/logo_full.png" width="560">
 
-### Online Auditing for Early Failure Prediction in Multi-Agent Systems
+## Online Auditing for Early Failure Prediction in Multi-Agent Systems
 
 [![Project Page](https://img.shields.io/badge/Project_Page-website-blue)](https://zbox1005.github.io/agent-foresight/)
 [![Dataset](https://img.shields.io/badge/🤗_Dataset-AFTraj-yellow)](https://huggingface.co/datasets/ZBox008003/AFTraj)
@@ -29,7 +29,9 @@ We release **AFTraj-2K**, a curated corpus of 2,276 multi-agent trajectories (1,
 
 ## AFTraj-2K Dataset
 
-A unified corpus of multi-agent trajectories collected, filtered, and annotated for online auditing. Hosted on 🤗HuggingFace: [ZBox008003/AFTraj](https://huggingface.co/datasets/ZBox008003/AFTraj).
+A unified corpus of multi-agent trajectories collected, filtered, and annotated for online auditing. 
+
+Hosted on 🤗HuggingFace: [ZBox008003/AFTraj](https://huggingface.co/datasets/ZBox008003/AFTraj).
 
 | Domain | Safe | Unsafe | Total |
 |---|---:|---:|---:|
