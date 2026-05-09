@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" width="380">
-
-# AgentForesight
+<img src="assets/logo_full.png" width="560">
 
 ### Online Auditing for Early Failure Prediction in Multi-Agent Systems
 
@@ -35,15 +33,12 @@ A unified corpus of multi-agent trajectories collected, filtered, and annotated 
 
 | Domain | Safe | Unsafe | Total |
 |---|---:|---:|---:|
-| math        |  396 |  397 |  793 |
-| coding      |  361 |  247 |  608 |
-| hotpotqa    |  234 |  242 |  476 |
-| gaia        |   67 |  133 |  200 |
-| toolsafety  |   19 |   43 |   62 |
-| expert_team |   85 |   52 |  137 |
-| **TOTAL**   | **1,162** | **1,114** | **2,276** |
+| Math      |   396 |   397 |   793 |
+| Coding    |   361 |   247 |   608 |
+| Agentic   |   405 |   470 |   875 |
+| **TOTAL** | **1,162** | **1,114** | **2,276** |
 
-The paper buckets the four interactive sub-domains (`hotpotqa`, `gaia`, `toolsafety`, `expert_team`) under a single **Agentic** macro-domain.
+The released parquet uses six fine-grained `domain` labels (`math`, `coding`, `hotpotqa`, `gaia`, `toolsafety`, `expert_team`); the four interactive sub-domains (`hotpotqa`, `gaia`, `toolsafety`, `expert_team`) collectively form the **Agentic** macro-domain shown above. Pass `--macro-domain` to the inference scripts to aggregate metrics under the same 3-bucket grouping.
 
 ## Installation
 
@@ -112,7 +107,7 @@ AgentForesight/
 │   ├── infer_local.py    # local-model auditor inference (transformers)
 │   └── infer_api.py      # OpenAI-compatible API auditor inference
 └── assets/
-    ├── logo.png
+    ├── logo_full.png
     ├── pipeline.png
     └── main_table.png
 ```
