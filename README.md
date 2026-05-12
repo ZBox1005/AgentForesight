@@ -124,7 +124,6 @@ If you find this work useful, please cite:
   journal={arXiv preprint arXiv:2605.08715},
   year={2026}
 }
-
 ```
 
 ## License
