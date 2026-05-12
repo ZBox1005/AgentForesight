@@ -4,6 +4,7 @@
 
 ## Online Auditing for Early Failure Prediction in Multi-Agent Systems
 
+[![arXiv](https://img.shields.io/badge/arXiv-2605.08715-b31b1b)](https://arxiv.org/abs/2605.08715)
 [![Project Page](https://img.shields.io/badge/Project_Page-website-blue)](https://zbox1005.github.io/agent-foresight/)
 [![Dataset](https://img.shields.io/badge/🤗_Dataset-AFTraj-yellow)](https://huggingface.co/datasets/ZBox008003/AFTraj)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -117,12 +118,13 @@ AgentForesight/
 If you find this work useful, please cite:
 
 ```bibtex
-@misc{zhang2026agentforesight,
-  title  = {AgentForesight: Online Auditing for Early Failure Prediction in Multi-Agent Systems},
-  author = {Zhang, Boxuan and Zhu, Jianing and Shi, Zeru and Liu, Dongfang and Tang, Ruixiang},
-  year   = {2026},
-  url    = {https://github.com/ZBox1005/AgentForesight}
+@article{zhang2026agentforesight,
+  title={AgentForesight: Online Auditing for Early Failure Prediction in Multi-Agent Systems},
+  author={Zhang, Boxuan and Zhu, Jianing and Shi, Zeru and Liu, Dongfang and Tang, Ruixiang},
+  journal={arXiv preprint arXiv:2605.08715},
+  year={2026}
 }
+
 ```
 
 ## License
