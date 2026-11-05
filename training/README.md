@@ -4,7 +4,7 @@ This directory contains the training implementation used for the reported V16 Ag
 
 ## Original inputs and provenance
 
-The local original run used 1,902 chosen/rejected DPO pairs, 1,940 GRPO training rows, and 332 rows for periodic Stage 2 evaluation. The DPO generator consumed 1,902 boundary prompt rows. Those exact processed files are under source and privacy review and are **not included in this public code release**. Contact the authors if you need them before publication. The public [AFTraj dataset](https://huggingface.co/datasets/ZBox008003/AFTraj) has 2,276 trajectories; four safe records (`gaia_0036_safe`, `gaia_0078_safe`, `gaia_0093_safe`, `math_0337_safe`) were excluded from training. Its export normalizes tool-call IDs, so rebuilding prompts from that export is semantically similar but not byte-identical to the original inputs.
+The local original run used 1,902 chosen/rejected DPO pairs, 1,940 GRPO training rows, and 332 rows for periodic Stage 2 evaluation. The DPO generator consumed 1,902 boundary prompt rows. Those exact processed files are under source and privacy review and are **not included in this public code release**. Contact the authors if you need them before publication. The public [AFTraj dataset](https://huggingface.co/datasets/ZBox008003/AFTraj) has the 2,272 trajectories in the paper's train/test manifests. Its export normalizes tool-call IDs, so rebuilding prompts from that export is semantically similar but not byte-identical to the original inputs.
 
 Expected input paths when the processed files are available:
 

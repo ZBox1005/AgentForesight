@@ -17,7 +17,7 @@
 
 **AgentForesight** reframes multi-agent failure analysis from *post-hoc diagnosis* of completed trajectories to *online auditing* of unfolding ones. At each step of an unfolding trajectory, an auditor observes only the current prefix and must either continue the run or alarm at the earliest decisive error, opening a runtime intervention window before downstream propagation locks in failure.
 
-We release **AFTraj-2K**, a curated corpus of 2,276 multi-agent trajectories (1,162 safe + 1,114 unsafe) across Coding, Math, and Agentic domains, and **AgentForesight-7B**, a compact online auditor trained with a coarse-to-fine reinforcement learning recipe.
+We release **AFTraj-2K**, a curated corpus of 2,272 multi-agent trajectories (1,158 safe + 1,114 unsafe) across Coding, Math, and Agentic domains, and **AgentForesight-7B**, a compact online auditor trained with a coarse-to-fine reinforcement learning recipe.
 
 <div align="center"><img src="assets/pipeline.png" width="92%"></div>
 
@@ -36,10 +36,10 @@ Hosted on 🤗HuggingFace: [ZBox008003/AFTraj](https://huggingface.co/datasets/Z
 
 | Domain | Safe | Unsafe | Total |
 |---|---:|---:|---:|
-| Math      |   396 |   397 |   793 |
+| Math      |   395 |   397 |   792 |
 | Coding    |   361 |   247 |   608 |
-| Agentic   |   405 |   470 |   875 |
-| **TOTAL** | **1,162** | **1,114** | **2,276** |
+| Agentic   |   402 |   470 |   872 |
+| **TOTAL** | **1,158** | **1,114** | **2,272** |
 
 ## Installation
 
