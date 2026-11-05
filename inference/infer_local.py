@@ -1,9 +1,8 @@
 """Local-model online auditing inference on AFTraj-2K.
 
-For every safe trajectory the auditor is queried once on the full trajectory
-(binary SAFE / UNSAFE classification). For every unsafe trajectory the
-auditor is queried at each prefix in temporal order; the first non-SAFE
-verdict is recorded as the predicted decisive step.
+For every trajectory the auditor is queried at each prefix in temporal order;
+the first parseable non-SAFE verdict stops the walk. If no alarm is issued,
+the prediction is SAFE.
 
 Per-sample results are streamed to ``per_sample.jsonl`` and a summary is
 written to ``results.json``.
@@ -20,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import time
 from pathlib import Path
 
@@ -53,7 +51,7 @@ def generate(model, tokenizer, messages: list[dict],
         max_new_tokens=max_new_tokens,
         do_sample=temperature > 0,
         eos_token_id=tokenizer.eos_token_id,
-        pad_token_id=tokenizer.eos_token_id,
+        pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
     )
     if temperature > 0:
         gen_kwargs["temperature"] = temperature
@@ -63,23 +61,18 @@ def generate(model, tokenizer, messages: list[dict],
         out = model.generate(inputs.input_ids, **gen_kwargs)
 
     new_ids = out[0][inputs.input_ids.shape[1]:]
-    return tokenizer.decode(new_ids, skip_special_tokens=False)
-
-def audit_full(model, tokenizer, rec: TrajectoryRecord,
-               max_new_tokens: int, temperature: float) -> tuple[AuditVerdict, float, int]:
-    msgs = build_messages(rec.turns, tools=rec.tools, current_step=None)
-    t0 = time.time()
-    raw = generate(model, tokenizer, msgs, max_new_tokens, temperature)
-    return parse_response(raw), time.time() - t0, 1
+    return tokenizer.decode(new_ids, skip_special_tokens=True)
 
 def audit_incremental(model, tokenizer, rec: TrajectoryRecord,
-                      max_new_tokens: int, temperature: float) -> tuple[AuditVerdict, float, int, int]:
+                      max_new_tokens: int, temperature: float,
+                      prompt_version: str = "v16") -> tuple[AuditVerdict, float, int, int | None]:
     total_time = 0.0
     n_calls = 0
     last: AuditVerdict | None = None
-    detection_step = rec.num_turns - 1                                         
+    detection_step = None
     for k in range(rec.num_turns):
-        msgs = build_messages(rec.turns, tools=rec.tools, current_step=k)
+        msgs = build_messages(rec.turns, tools=rec.tools, current_step=k,
+                              prompt_version=prompt_version)
         t0 = time.time()
         raw = generate(model, tokenizer, msgs, max_new_tokens, temperature)
         total_time += time.time() - t0
@@ -88,7 +81,8 @@ def audit_incremental(model, tokenizer, rec: TrajectoryRecord,
         if last.valid and last.pred_step >= 0:
             detection_step = k
             return last, total_time, n_calls, detection_step
-    return last or AuditVerdict(-1, "", "", False, ""), total_time, n_calls, detection_step
+    raw = last.raw_response if last else ""
+    return AuditVerdict(-1, "", "", bool(last and last.valid), raw), total_time, n_calls, detection_step
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
@@ -96,8 +90,9 @@ def main() -> None:
     p.add_argument("--data-dir",       default="./data",    help="Directory holding aftraj_safe.parquet and aftraj_unsafe.parquet.")
     p.add_argument("--output-dir",     default="./outputs", help="Where to write per_sample.jsonl + results.json.")
     p.add_argument("--device",         default="auto")
-    p.add_argument("--max-new-tokens", type=int,   default=2048)
+    p.add_argument("--max-new-tokens", type=int,   default=1500)
     p.add_argument("--temperature",    type=float, default=0.0)
+    p.add_argument("--prompt-version", choices=("v15", "v16"), default="v16")
     p.add_argument("--max-trajs",      type=int,   default=None, help="Optional cap (smoke test).")
     p.add_argument("--domains",        type=str,   default=None, help="Comma-separated domain whitelist.")
     p.add_argument("--paper-test-split", action="store_true",
@@ -132,15 +127,10 @@ def main() -> None:
         f.flush()
 
         for rec in tqdm(records, desc="audit"):
-            if rec.label == "safe":
-                verdict, gen_s, n_calls = audit_full(
-                    model, tokenizer, rec, args.max_new_tokens, args.temperature
-                )
-                detection_step = -1
-            else:
-                verdict, gen_s, n_calls, detection_step = audit_incremental(
-                    model, tokenizer, rec, args.max_new_tokens, args.temperature
-                )
+            verdict, gen_s, n_calls, detection_step = audit_incremental(
+                model, tokenizer, rec, args.max_new_tokens, args.temperature,
+                args.prompt_version,
+            )
 
             row = {
                 "conv_id":        rec.conv_id,

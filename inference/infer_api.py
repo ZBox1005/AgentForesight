@@ -39,21 +39,16 @@ def call_api(client: OpenAI, model: str, messages: list[dict],
     )
     return resp.choices[0].message.content or ""
 
-def audit_full(client, model: str, rec: TrajectoryRecord,
-               max_tokens: int, temperature: float) -> tuple[AuditVerdict, float, int]:
-    msgs = build_messages(rec.turns, tools=rec.tools, current_step=None)
-    t0 = time.time()
-    raw = call_api(client, model, msgs, max_tokens, temperature)
-    return parse_response(raw), time.time() - t0, 1
-
 def audit_incremental(client, model: str, rec: TrajectoryRecord,
-                      max_tokens: int, temperature: float) -> tuple[AuditVerdict, float, int, int]:
+                      max_tokens: int, temperature: float,
+                      prompt_version: str = "v15") -> tuple[AuditVerdict, float, int, int | None]:
     total_time = 0.0
     n_calls = 0
     last: AuditVerdict | None = None
-    detection_step = rec.num_turns - 1
+    detection_step = None
     for k in range(rec.num_turns):
-        msgs = build_messages(rec.turns, tools=rec.tools, current_step=k)
+        msgs = build_messages(rec.turns, tools=rec.tools, current_step=k,
+                              prompt_version=prompt_version)
         t0 = time.time()
         raw = call_api(client, model, msgs, max_tokens, temperature)
         total_time += time.time() - t0
@@ -62,15 +57,17 @@ def audit_incremental(client, model: str, rec: TrajectoryRecord,
         if last.valid and last.pred_step >= 0:
             detection_step = k
             return last, total_time, n_calls, detection_step
-    return last or AuditVerdict(-1, "", "", False, ""), total_time, n_calls, detection_step
+    raw = last.raw_response if last else ""
+    return AuditVerdict(-1, "", "", bool(last and last.valid), raw), total_time, n_calls, detection_step
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--model",       required=True,       help="OpenAI-compatible model name (e.g. gpt-4.1).")
     p.add_argument("--data-dir",    default="./data")
     p.add_argument("--output-dir",  default="./outputs_api")
-    p.add_argument("--max-tokens",  type=int,   default=2048)
+    p.add_argument("--max-tokens",  type=int,   default=1500)
     p.add_argument("--temperature", type=float, default=0.0)
+    p.add_argument("--prompt-version", choices=("v15", "v16"), default="v15")
     p.add_argument("--max-trajs",   type=int,   default=None, help="Optional cap (smoke test).")
     p.add_argument("--domains",     type=str,   default=None, help="Comma-separated domain whitelist.")
     p.add_argument("--base-url",    default=None,             help="Override OpenAI base URL (also $OPENAI_BASE_URL).")
@@ -110,15 +107,10 @@ def main() -> None:
         f.flush()
 
         for rec in tqdm(records, desc="audit-api"):
-            if rec.label == "safe":
-                verdict, gen_s, n_calls = audit_full(
-                    client, args.model, rec, args.max_tokens, args.temperature
-                )
-                detection_step = -1
-            else:
-                verdict, gen_s, n_calls, detection_step = audit_incremental(
-                    client, args.model, rec, args.max_tokens, args.temperature
-                )
+            verdict, gen_s, n_calls, detection_step = audit_incremental(
+                client, args.model, rec, args.max_tokens, args.temperature,
+                args.prompt_version,
+            )
 
             row = {
                 "conv_id":        rec.conv_id,

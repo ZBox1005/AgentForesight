@@ -72,7 +72,8 @@ Local model (transformers):
 python -m inference.infer_local \
     --model-path  <hf_repo_or_local_path> \
     --data-dir    <path_to_dataset> \
-    --output-dir  ./outputs/auditor_local
+    --output-dir  ./outputs/auditor_local \
+    --paper-test-split --macro-domain
 ```
 
 OpenAI-compatible API (GPT-4.1, DeepSeek, vLLM-served local model, ...):
@@ -81,10 +82,11 @@ export OPENAI_API_KEY=sk-...
 python -m inference.infer_api \
     --model       gpt-4.1 \
     --data-dir    <path_to_dataset> \
-    --output-dir  ./outputs/gpt41
+    --output-dir  ./outputs/gpt41 \
+    --paper-test-split --macro-domain
 ```
 
-Add `--paper-test-split` to restrict to the held-out test split (332 trajectories) used in the paper.
+Both commands query each trajectory prefix in sequence and stop at the first parseable alarm. The local command uses the paper's V16 prompt; the API command defaults to the V15 baseline prompt. The published AFTraj parquet normalizes tool-call IDs, so rerunning inference from it may not reproduce the exact original token stream. The reported model was also periodically evaluated on the same 332-trajectory paper test split during Stage 2 training; treat it as a reported evaluation split, not an untouched final test set.
 
 ## Main Results
 
@@ -92,7 +94,13 @@ Add `--paper-test-split` to restrict to the held-out test split (332 trajectorie
 
 AgentForesight-7B reaches 66.44 overall Exact-F1, +19.88 points above the strongest proprietary baseline DeepSeek-V4-Pro, with a 3 $\times$ tighter ASS and the largest gains on Math (77.36 vs 50.34) and Coding (78.87 vs 49.32).
 
-The AgentForesight-7B checkpoint will be released on HuggingFace upon paper acceptance.
+The verified paper checkpoint and model card are public at [ZBox008003/AgentForesight-7B](https://huggingface.co/ZBox008003/AgentForesight-7B).
+
+To check the metric code against the saved paper decisions without a GPU, run `python -m scripts.verify_paper_metrics`. The 332-row decision ledger is in `results/paper_test_predictions.jsonl`; it yields 66.44 Exact-F1, 2.37% FAR, and 0.592 ASS.
+
+## Training recipe
+
+The Stage 1 DPO/BPPO trainer, Stage 2 GRPO configuration, V16 reward, and prompt builders are in [`training/`](training/). See [`training/README.md`](training/README.md) for inputs, versions, and the release status of the processed training artifacts. The original processed inputs are under provenance review and are not yet part of the public release.
 
 ## Repository Structure
 
@@ -107,6 +115,9 @@ AgentForesight/
 │   ├── metrics.py        # Exact-F1 / ASS / FAR / Step-Acc + macro-domain bucketing
 │   ├── infer_local.py    # local-model auditor inference (transformers)
 │   └── infer_api.py      # OpenAI-compatible API auditor inference
+├── training/             # Stage 1 DPO and Stage 2 GRPO recipe
+├── scripts/verify_paper_metrics.py
+├── results/paper_test_predictions.jsonl
 └── assets/
     ├── logo_full.png
     ├── pipeline.png
@@ -128,5 +139,6 @@ If you find this work useful, please cite:
 
 ## License
 
-- **Code** (`inference/`): MIT License — see [LICENSE](LICENSE).
+- **Code** (`inference/`, `training/`, `scripts/`): MIT License — see [LICENSE](LICENSE).
 - **Dataset** (HuggingFace `ZBox008003/AFTraj`): CC BY 4.0.
+- **Decision ledger** (`results/`): CC BY 4.0; derived from the AFTraj test split.

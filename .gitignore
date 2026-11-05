@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+outputs/
+checkpoints/
+data/paper_training_inputs/
