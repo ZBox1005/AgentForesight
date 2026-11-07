@@ -49,8 +49,6 @@ MACRO_DOMAIN: dict[str, str] = {
     "gaia":        "Agentic",
     "toolsafety":  "Agentic",
     "expert_team": "Agentic",
-    "v15_expert_team": "Agentic",
-    "v15_toolsafety": "Agentic",
 }
 
 def to_macro(sub_domain: str) -> str:

@@ -86,7 +86,7 @@ python -m inference.infer_api \
     --paper-test-split --macro-domain
 ```
 
-Both commands query each trajectory prefix in sequence and stop at the first parseable alarm. The local command uses the paper's V16 prompt; the API command defaults to the V15 baseline prompt.
+Both commands use the paper auditor prompt, query each trajectory prefix in sequence, and stop at the first parseable alarm.
 
 ## Main Results
 
@@ -94,13 +94,11 @@ Both commands query each trajectory prefix in sequence and stop at the first par
 
 AgentForesight-7B reaches 66.44 overall Exact-F1, +19.88 points above the strongest proprietary baseline DeepSeek-V4-Pro, with a 3 $\times$ tighter ASS and the largest gains on Math (77.36 vs 50.34) and Coding (78.87 vs 49.32).
 
-The verified paper checkpoint and model card are public at [ZBox008003/AgentForesight-7B](https://huggingface.co/ZBox008003/AgentForesight-7B).
-
-To check the metric code against the saved paper decisions without a GPU, run `python -m scripts.verify_paper_metrics`. The 332-row decision ledger is in `results/paper_test_predictions.jsonl`; it yields 66.44 Exact-F1, 2.37% FAR, and 0.592 ASS.
+The model checkpoint and model card are public at [ZBox008003/AgentForesight-7B](https://huggingface.co/ZBox008003/AgentForesight-7B).
 
 ## Training recipe
 
-The Stage 1 DPO/BPPO trainer, Stage 2 GRPO configuration, V16 reward, prompt builders, and a script to prepare training inputs from the public AFTraj dataset are in [`training/`](training/). See [`training/README.md`](training/README.md) for the data preparation and training commands.
+The Stage 1 BPPO trainer, Stage 2 GRPO configuration, reward, prompt builder, and a script to prepare training inputs from the public AFTraj dataset are in [`training/`](training/). See [`training/README.md`](training/README.md) for the data preparation and training commands.
 
 ## Trajectory collection
 
@@ -114,15 +112,13 @@ AgentForesight/
 ├── LICENSE
 ├── requirements.txt
 ├── inference/
-│   ├── prompts.py        # auditor system prompt + chat-template builder + parser
+│   ├── prompts.py        # prompt messages and response parser
 │   ├── data.py           # parquet loader (with paper_test_split flag)
 │   ├── metrics.py        # Exact-F1 / ASS / FAR / Step-Acc + macro-domain bucketing
 │   ├── infer_local.py    # local-model auditor inference (transformers)
 │   └── infer_api.py      # OpenAI-compatible API auditor inference
-├── training/             # Stage 1 DPO and Stage 2 GRPO recipe
+├── training/             # paper prompt, Stage 1 BPPO, and Stage 2 GRPO recipe
 ├── collection/           # Math AutoGen and Agentic smolagents rollouts
-├── scripts/verify_paper_metrics.py
-├── results/paper_test_predictions.jsonl
 └── assets/
     ├── logo_full.png
     ├── pipeline.png
@@ -144,6 +140,5 @@ If you find this work useful, please cite:
 
 ## License
 
-- **Code** (`inference/`, `training/`, `scripts/`): MIT License — see [LICENSE](LICENSE).
+- **Code** (`inference/`, `training/`, `collection/`): MIT License — see [LICENSE](LICENSE).
 - **Dataset** (HuggingFace `ZBox008003/AFTraj`): CC BY 4.0.
-- **Decision ledger** (`results/`): CC BY 4.0; derived from the AFTraj test split.

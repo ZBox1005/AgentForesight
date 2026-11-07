@@ -16,16 +16,16 @@ import pandas as pd
 class TrajectoryRecord:
     conv_id: str
     domain: str
-    label: str                               
+    label: str
     task: str
     gold_answer: str
     num_turns: int
     turns: list[dict]
     tools: list[dict] = field(default_factory=list)
-    mistake_step: int = -1                         
+    mistake_step: int = -1
     mistake_agent: str = ""
     mistake_reason: str = ""
-    unsafe_source: str = ""                                                 
+    unsafe_source: str = ""
 
 def _as_list(value) -> list:
     if value is None:
@@ -33,7 +33,6 @@ def _as_list(value) -> list:
     return [v for v in value]
 
 def _row_to_record(row: dict, label: str) -> TrajectoryRecord:
-                                                                           
     turns = [dict(t) for t in _as_list(row.get("turns"))]
     tools = [dict(t) for t in _as_list(row.get("tools"))]
     return TrajectoryRecord(
@@ -66,7 +65,8 @@ def load_aftraj(data_dir: str | Path,
         sp = data_dir / "splits_test.json"
         if not sp.exists():
             raise FileNotFoundError(f"paper_test_split=True but missing: {sp}")
-        sj = json.load(open(sp))
+        with open(sp) as handle:
+            sj = json.load(handle)
         test_ids = {"safe": set(sj["test_safe"]), "unsafe": set(sj["test_unsafe"])}
 
     records: list[TrajectoryRecord] = []

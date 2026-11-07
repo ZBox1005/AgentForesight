@@ -1,49 +1,8 @@
-"""V16 DPO data generator — paper Stage 1 (Failure-Boundary Alignment).
+"""Generate Stage 1 chosen/rejected pairs from boundary prompts.
 
-Strict implementation of:
-
-    For every unsafe trajectory (τ, k*, a*) ∈ D_unsafe, we construct two
-    boundary-pair prompts that share the same trajectory but differ by exactly
-    one turn at the decisive step:
-      - Pre-boundary prompt τ_{0:k*-1}  → optimal verdict CONTINUE (SAFE)
-      - Post-boundary prompt τ_{0:k*}   → optimal verdict ALARM(k*, a*)
-
-    We sample candidate responses from base-policy rollouts, classify them by
-    alignment with the verified label, and use deterministic synthetic
-    fallbacks when no valid chosen or rejected rollout is available. We partition
-    D_pair = D_BS ∪ D_BE by prompt position and optimize jointly.
-
-Key implementation choices:
-  - Source: data/paper_training_inputs/dpo_boundary_prompts.parquet, filtered to
-    sample_type ∈ {boundary_safe, boundary_error}. ~1902 prompts.
-  - Rollouts: vLLM samples N=4 responses per prompt from base Qwen2.5-7B-Instruct
-    using the V16 prompt as-is.
-  - Classification (per rollout, against verified label):
-      * D_BS prompt (target=SAFE):
-          chosen   = parses to SAFE
-          rejected = parses to ALARM (any step)
-      * D_BE prompt (target=ALARM(k*, a*)):
-          chosen   = ALARM with pred_step == k* AND agent matches a* (lenient)
-          rejected = SAFE OR wrong step OR wrong agent
-      * Format-invalid rollouts: dropped (neither chosen nor rejected).
-  - Pair construction: 1 (chosen, rejected) per prompt. If pool is empty,
-    fall back to deterministic synthetic responses (logged in meta).
-  - Output: data/generated_dpo/dpo_pairs.json + classification report.
-
-Usage:
-    CUDA_VISIBLE_DEVICES=0,1 python -m training.generate_dpo_pairs \\
-        --model_path Qwen/Qwen2.5-7B-Instruct \\
-        --train_parquet data/paper_training_inputs/dpo_boundary_prompts.parquet \\
-        --output_dir data/generated_dpo \\
-        --n_responses 4 --temperature 0.7
-
-Smoke (first 50 prompts, single GPU):
-    CUDA_VISIBLE_DEVICES=0 python -m training.generate_dpo_pairs \\
-        --model_path Qwen/Qwen2.5-7B-Instruct \\
-        --train_parquet data/paper_training_inputs/dpo_boundary_prompts.parquet \\
-        --output_dir data/generated_dpo_smoke \\
-        --max_prompts 50 --tensor_parallel_size 1
-"""
+The base model supplies sampled responses. Each response is classified against
+the boundary label; deterministic fallbacks fill an empty chosen or rejected
+pool. The output is bppo_pairs.json for training.run_bppo."""
 from __future__ import annotations
 
 import argparse
@@ -56,13 +15,11 @@ import pandas as pd
 from tqdm import tqdm
 
 from training.reward import (
-    parse_v16, REQUIRED_JSON_FIELDS, compute_score,
+    parse_verdict, REQUIRED_JSON_FIELDS, compute_score,
 )
 
 
-# ── Synthetic fallbacks (used only when base-policy rollouts produce no valid
-#    chosen or no valid rejected for a given prompt — minority case). Identical
-#    templates to the older draft so format always passes V11 gate.
+# ── Synthetic fallbacks when a rollout pool is empty.
 # ────────────────────────────────────────────────────────────────────────────
 
 def _trim_to_two_sentences(text: str, max_chars: int = 200) -> str:
@@ -113,7 +70,7 @@ def synth_chosen(extra: dict, gt: dict) -> str:
     return _wrap(think, {"answer": int(ms), "agent": agent, "reason": reason})
 
 
-def synth_rejected(extra: dict, gt: dict, rng: random.Random) -> str:
+def synth_rejected(extra: dict, gt: dict) -> str:
     nt = int(gt.get("num_turns", 1)) or 1
     ms = gt.get("mistake_step", -1)
     if ms >= 0:
@@ -138,7 +95,7 @@ def synth_rejected(extra: dict, gt: dict, rng: random.Random) -> str:
 
 def classify_rollout(rollout: str, gt: dict, sample_type: str) -> str:
     """Returns 'chosen', 'rejected', or 'invalid'."""
-    p = parse_v16(rollout)
+    p = parse_verdict(rollout)
     if not (p.has_think and p.has_answer and p.json_valid):
         return "invalid"
     obj = p.json_obj
@@ -180,12 +137,6 @@ def classify_rollout(rollout: str, gt: dict, sample_type: str) -> str:
 
 # ── vLLM rollout helper ─────────────────────────────────────────────────────
 
-def format_messages_to_prompt(messages: list[dict], tokenizer) -> str:
-    return tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True,
-    )
-
-
 def vllm_rollout(prompts_text, n, model_path, max_new_tokens, temperature,
                  tensor_parallel_size, gpu_memory_utilization, seed):
     from vllm import LLM, SamplingParams
@@ -209,14 +160,14 @@ def vllm_rollout(prompts_text, n, model_path, max_new_tokens, temperature,
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", default="Qwen/Qwen2.5-7B-Instruct",
-                        help="Base policy for rollouts (paper: same model used as RL init).")
+                        help="Base policy for response sampling.")
     parser.add_argument("--train_parquet", required=True,
-                        help="V16 train.parquet from prepare_data_v16.py.")
+                        help="Boundary prompt parquet from training.prepare_public_data.")
     parser.add_argument("--output_dir", required=True)
     parser.add_argument("--n_responses", type=int, default=4,
-                        help="Rollouts per prompt (paper does not specify; 4 gives reasonable diversity).")
+                        help="Sampled responses per boundary prompt.")
     parser.add_argument("--temperature", type=float, default=0.7,
-                        help="Rollout sampling temperature (diverse but coherent).")
+                        help="Rollout sampling temperature.")
     parser.add_argument("--max_new_tokens", type=int, default=1500,
                         help="Per-rollout max generation length.")
     parser.add_argument("--max_prompts", type=int, default=None,
@@ -232,7 +183,7 @@ def main() -> None:
 
     # Paper Stage 1 = D_unsafe boundary pairs only. Filter train.parquet to
     # sample_type ∈ {boundary_safe, boundary_error}.
-    print(f"[V16-DPO] Loading {args.train_parquet}")
+    print(f"[BPPO] Loading {args.train_parquet}")
     df = pd.read_parquet(args.train_parquet)
     is_boundary = df["extra_info"].apply(
         lambda e: e["sample_type"] in ("boundary_safe", "boundary_error")
@@ -241,19 +192,21 @@ def main() -> None:
     if args.max_prompts is not None:
         df = df.head(args.max_prompts).reset_index(drop=True)
     type_counts = Counter(e["sample_type"] for e in df["extra_info"])
-    print(f"[V16-DPO] Boundary prompts: {len(df)}  ({dict(type_counts)})")
+    print(f"[BPPO] Boundary prompts: {len(df)}  ({dict(type_counts)})")
 
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(args.model_path, trust_remote_code=True)
 
-    print("[V16-DPO] Building chat-template prompts")
+    print("[BPPO] Building chat-template prompts")
     prompts_text = []
     for _, row in tqdm(df.iterrows(), total=len(df)):
         msgs = [dict(m) for m in row["prompt"]]
-        prompts_text.append(format_messages_to_prompt(msgs, tokenizer))
+        prompts_text.append(tokenizer.apply_chat_template(
+            msgs, tokenize=False, add_generation_prompt=True,
+        ))
 
-    print(f"[V16-DPO] vLLM rollout: model={args.model_path}  n={args.n_responses}  T={args.temperature}")
-    print(f"[V16-DPO] Total generations: {len(prompts_text) * args.n_responses}")
+    print(f"[BPPO] vLLM rollout: model={args.model_path}  n={args.n_responses}  T={args.temperature}")
+    print(f"[BPPO] Total generations: {len(prompts_text) * args.n_responses}")
     outputs = vllm_rollout(
         prompts_text, n=args.n_responses, model_path=args.model_path,
         max_new_tokens=args.max_new_tokens, temperature=args.temperature,
@@ -261,7 +214,7 @@ def main() -> None:
         gpu_memory_utilization=args.gpu_memory_utilization, seed=args.seed,
     )
 
-    print("[V16-DPO] Classifying rollouts + building pairs")
+    print("[BPPO] Classifying rollouts + building pairs")
     pairs = []
     classification_log: Counter = Counter()
     pair_source: Counter = Counter()
@@ -292,7 +245,7 @@ def main() -> None:
             rejected = rng.choice(rejected_pool)
             rejected_src = "rollout"
         else:
-            rejected = synth_rejected(extra, gt, rng)
+            rejected = synth_rejected(extra, gt)
             rejected_src = "synth"
         if chosen.strip() == rejected.strip():
             # Should be impossible (different sample_type or different content);
@@ -314,10 +267,8 @@ def main() -> None:
             "meta": meta,
         })
 
-    # Validate every pair under V11 reward (chosen should score high, rejected low).
-    # This is a sanity check — pairs that fail are kept (paper takes base-policy as-is)
-    # but counted.
-    print("[V16-DPO] V11-reward sanity check")
+    # Report pairs whose chosen/rejected responses disagree with the reward score.
+    print("[BPPO] Reward score check")
     cs_list, rs_list, anomalies = [], [], Counter()
     for p in pairs:
         gt_dict = {
@@ -332,7 +283,7 @@ def main() -> None:
         if rs > 0.5: anomalies["rejected_high"] += 1
         if cs <= rs: anomalies["chosen_not_better"] += 1
 
-    out_path = out / "dpo_pairs.json"
+    out_path = out / "bppo_pairs.json"
     with open(out_path, "w") as f:
         json.dump(pairs, f, ensure_ascii=False, indent=2)
 
@@ -340,19 +291,19 @@ def main() -> None:
     unique_chosen = len(set(p["chosen"] for p in pairs))
     unique_rejected = len(set(p["rejected"] for p in pairs))
 
-    print(f"\n[V16-DPO] Wrote {len(pairs)} pairs → {out_path}")
-    print(f"[V16-DPO] Per-sample-type rollout classification (sample_type, class → count):")
+    print(f"\n[BPPO] Wrote {len(pairs)} pairs → {out_path}")
+    print("[BPPO] Per-sample-type rollout classification (sample_type, class → count):")
     for (st, cls), n in sorted(classification_log.items()):
         print(f"  {st:<18} {cls:<8} = {n}")
-    print(f"[V16-DPO] Pair source (chosen, rejected → count):")
+    print("[BPPO] Pair source (chosen, rejected → count):")
     for (cs_src, rs_src), n in sorted(pair_source.items()):
         print(f"  chosen={cs_src:<8} rejected={rs_src:<8} = {n}")
     if cs_list:
-        print(f"[V16-DPO] V11 reward sanity:")
+        print("[BPPO] Reward score check:")
         print(f"  chosen   score: mean={sum(cs_list)/len(cs_list):+.3f}  min={min(cs_list):+.3f}")
         print(f"  rejected score: mean={sum(rs_list)/len(rs_list):+.3f}  max={max(rs_list):+.3f}")
         print(f"  anomalies: {dict(anomalies) if anomalies else 'none'}")
-    print(f"[V16-DPO] Diversity: unique chosen={unique_chosen}/{len(pairs)}  unique rejected={unique_rejected}/{len(pairs)}")
+    print(f"[BPPO] Diversity: unique chosen={unique_chosen}/{len(pairs)}  unique rejected={unique_rejected}/{len(pairs)}")
 
 
 if __name__ == "__main__":

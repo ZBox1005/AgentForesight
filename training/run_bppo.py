@@ -1,7 +1,7 @@
 """Stage 1 boundary preference optimization for AgentForesight-7B.
 
-The implementation uses an explicit DPO loss and automatic model device
-placement. Run `bash training/run_dpo.sh` with the paper's processed pairs.
+The implementation uses a pairwise preference loss and automatic model device
+placement. Run `bash training/run_bppo.sh` with the prepared boundary pairs.
 """
 
 import argparse
@@ -23,17 +23,12 @@ from tqdm import tqdm
 # Dataset
 # ============================================================
 
-class DPODataset(Dataset):
-    """DPO dataset: prompt + chosen + rejected."""
+class BPPODataset(Dataset):
+    """Boundary prompts with chosen and rejected responses."""
 
-    def __init__(self, data_path: str, tokenizer, max_prompt_len: int = 6144,
-                 max_response_len: int = 3072):
+    def __init__(self, data_path: str):
         with open(data_path) as f:
             self.pairs = json.load(f)
-
-        self.tokenizer = tokenizer
-        self.max_prompt_len = max_prompt_len
-        self.max_response_len = max_response_len
 
     def __len__(self):
         return len(self.pairs)
@@ -48,8 +43,8 @@ class DPODataset(Dataset):
         }
 
 
-def collate_dpo(batch, tokenizer, max_length=9216):
-    """Tokenize and collate a batch of DPO pairs.
+def collate_bppo(batch, tokenizer, max_length=9216):
+    """Tokenize and collate a batch of boundary preference pairs.
 
     Returns dict with:
         chosen_input_ids, chosen_labels, chosen_attention_mask
@@ -108,7 +103,7 @@ def collate_dpo(batch, tokenizer, max_length=9216):
 
 
 # ============================================================
-# DPO Loss
+# Boundary preference loss
 # ============================================================
 
 def compute_log_probs(model, input_ids, labels, attention_mask):
@@ -126,16 +121,15 @@ def compute_log_probs(model, input_ids, labels, attention_mask):
 
     # Mask: only count response tokens (labels != -100)
     mask = (shift_labels != -100).float()
-    # Use SUM (not average) — standard DPO formulation: log π(y|x) = Σ_t log π(y_t|...)
-    # Average would dilute the signal by ~200x (response length), making β×ratio ≈ 0
+    # Sum token log probabilities to obtain the response log probability.
     seq_log_probs = (token_log_probs * mask).sum(dim=1)
 
     return seq_log_probs
 
 
-def dpo_loss(policy_chosen_logps, policy_rejected_logps,
+def bppo_loss(policy_chosen_logps, policy_rejected_logps,
              ref_chosen_logps, ref_rejected_logps, beta=0.1):
-    """Standard DPO loss.
+    """Reference-relative preference loss for boundary pairs.
 
     L = -log σ(β × ((log π(y_w|x) - log π_ref(y_w|x)) - (log π(y_l|x) - log π_ref(y_l|x))))
     """
@@ -156,22 +150,10 @@ def dpo_loss(policy_chosen_logps, policy_rejected_logps,
 # Training loop
 # ============================================================
 
-def train_dpo(args):
-    """Main DPO training loop."""
+def train_bppo(args):
+    """Stage 1 BPPO training loop."""
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    if getattr(args, "disable_thinking", False):
-        # Force Qwen3 chat_template to always render with enable_thinking=False,
-        # regardless of how apply_chat_template is called. This works by prepending
-        # a Jinja `{% set enable_thinking = false %}` statement that overrides any
-        # value passed in. Non-destructive — preserves all other template logic.
-        orig = tokenizer.chat_template or ""
-        marker = "{%- set enable_thinking = false -%}\n"
-        if orig and "enable_thinking" in orig and marker not in orig:
-            tokenizer.chat_template = marker + orig
-            print("[disable_thinking] Prepended `{% set enable_thinking = false %}` to chat_template.")
-        else:
-            print("[disable_thinking] chat_template already patched or does not use enable_thinking — no-op.")
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -197,11 +179,11 @@ def train_dpo(args):
         param.requires_grad = False
 
     # Dataset
-    dataset = DPODataset(args.dpo_data, tokenizer)
-    print(f"DPO dataset: {len(dataset)} pairs")
+    dataset = BPPODataset(args.pair_data)
+    print(f"BPPO dataset: {len(dataset)} pairs")
 
     def collate_fn(batch):
-        return collate_dpo(batch, tokenizer, max_length=args.max_length)
+        return collate_bppo(batch, tokenizer, max_length=args.max_length)
 
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True,
@@ -227,7 +209,7 @@ def train_dpo(args):
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps,
     )
 
-    print(f"\n=== DPO Training Config ===")
+    print("\n=== BPPO Training Config ===")
     print(f"  Pairs: {len(dataset)}")
     print(f"  Batch size: {args.batch_size}")
     print(f"  Epochs: {args.epochs}")
@@ -287,8 +269,8 @@ def train_dpo(args):
                     batch["rejected_attention_mask"],
                 )
 
-            # DPO loss
-            loss, margin, acc = dpo_loss(
+            # Boundary preference loss
+            loss, margin, acc = bppo_loss(
                 policy_chosen_logps, policy_rejected_logps,
                 ref_chosen_logps, ref_rejected_logps,
                 beta=args.beta,
@@ -320,7 +302,7 @@ def train_dpo(args):
         print(f"Epoch {epoch+1}: loss={epoch_loss/n_batches:.4f} "
               f"acc={epoch_acc/n_batches:.2f} margin={epoch_margin/n_batches:.3f}")
 
-        # Per-epoch checkpoint (added for V16: monitor val + allow rollback)
+        # Keep an epoch checkpoint for inspection and restart.
         epoch_dir = Path(args.output_dir) / f"epoch_{epoch+1}"
         epoch_dir.mkdir(parents=True, exist_ok=True)
         print(f"  Saving epoch-{epoch+1} ckpt → {epoch_dir}")
@@ -335,10 +317,10 @@ def train_dpo(args):
                 "margin": epoch_margin / n_batches,
             }, f, indent=2)
 
-    # Final symlink (compat with existing eval scripts that expect output_dir/ as the model)
+    # Save the final model at output_dir for Stage 2.
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\nSaving final DPO model to {out_dir}...")
+    print(f"\nSaving final BPPO model to {out_dir}...")
     policy_model.save_pretrained(out_dir)
     tokenizer.save_pretrained(out_dir)
     print("Done!")
@@ -347,31 +329,26 @@ def train_dpo(args):
     config = vars(args)
     config["total_steps"] = total_steps
     config["dataset_size"] = len(dataset)
-    with open(out_dir / "dpo_config.json", "w") as f:
+    with open(out_dir / "bppo_config.json", "w") as f:
         json.dump(config, f, indent=2)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AgentForesight Stage 1 DPO training")
+    parser = argparse.ArgumentParser(description="AgentForesight Stage 1 BPPO training")
     parser.add_argument("--model_path", type=str, default="Qwen/Qwen2.5-7B-Instruct")
-    parser.add_argument("--dpo_data", type=str, default="data/paper_training_inputs/dpo_pairs.json")
-    parser.add_argument("--output_dir", type=str, default="checkpoints/v16_dpo")
-    parser.add_argument("--beta", type=float, default=0.1, help="DPO temperature")
+    parser.add_argument("--pair_data", type=str, default="data/paper_training_inputs/bppo_pairs.json")
+    parser.add_argument("--output_dir", type=str, default="checkpoints/bppo")
+    parser.add_argument("--beta", type=float, default=0.1, help="Preference loss temperature")
     parser.add_argument("--lr", type=float, default=5e-7)
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=1, help="Global batch size")
     parser.add_argument("--grad_accum", type=int, default=16, help="Gradient accumulation steps")
     parser.add_argument("--max_length", type=int, default=8192, help="Max total sequence length")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument(
-        "--disable_thinking", action="store_true",
-        help="Patch tokenizer's chat_template to remove Qwen3 native '<think>\\n' prefix. "
-             "Use for V10-Qwen-nothink variant. Has no effect on Llama/other non-Qwen3 models.",
-    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
-    train_dpo(args)
+    train_bppo(args)
 
 
 if __name__ == "__main__":

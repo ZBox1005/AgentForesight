@@ -2,5 +2,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 outputs/
+outputs_api/
 checkpoints/
 data/paper_training_inputs/
+results/

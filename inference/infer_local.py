@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 from pathlib import Path
 
 import torch
@@ -28,7 +27,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from inference.data import TrajectoryRecord, load_aftraj
 from inference.metrics import aggregate_by_domain, format_report, per_sample_metrics
-from inference.prompts import AuditVerdict, build_messages, parse_response
+from inference.prompts import AuditVerdict
+from inference.runner import audit_incremental as run_incremental
 
 def load_model(model_path: str, device: str = "auto") -> tuple:
     print(f"Loading auditor from {model_path} ...")
@@ -64,25 +64,11 @@ def generate(model, tokenizer, messages: list[dict],
     return tokenizer.decode(new_ids, skip_special_tokens=True)
 
 def audit_incremental(model, tokenizer, rec: TrajectoryRecord,
-                      max_new_tokens: int, temperature: float,
-                      prompt_version: str = "v16") -> tuple[AuditVerdict, float, int, int | None]:
-    total_time = 0.0
-    n_calls = 0
-    last: AuditVerdict | None = None
-    detection_step = None
-    for k in range(rec.num_turns):
-        msgs = build_messages(rec.turns, tools=rec.tools, current_step=k,
-                              prompt_version=prompt_version)
-        t0 = time.time()
-        raw = generate(model, tokenizer, msgs, max_new_tokens, temperature)
-        total_time += time.time() - t0
-        n_calls += 1
-        last = parse_response(raw)
-        if last.valid and last.pred_step >= 0:
-            detection_step = k
-            return last, total_time, n_calls, detection_step
-    raw = last.raw_response if last else ""
-    return AuditVerdict(-1, "", "", bool(last and last.valid), raw), total_time, n_calls, detection_step
+                      max_new_tokens: int, temperature: float) -> tuple[AuditVerdict, float, int, int | None]:
+    return run_incremental(
+        rec,
+        lambda messages: generate(model, tokenizer, messages, max_new_tokens, temperature),
+    )
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
@@ -92,7 +78,6 @@ def main() -> None:
     p.add_argument("--device",         default="auto")
     p.add_argument("--max-new-tokens", type=int,   default=1500)
     p.add_argument("--temperature",    type=float, default=0.0)
-    p.add_argument("--prompt-version", choices=("v15", "v16"), default="v16")
     p.add_argument("--max-trajs",      type=int,   default=None, help="Optional cap (smoke test).")
     p.add_argument("--domains",        type=str,   default=None, help="Comma-separated domain whitelist.")
     p.add_argument("--paper-test-split", action="store_true",
@@ -129,7 +114,6 @@ def main() -> None:
         for rec in tqdm(records, desc="audit"):
             verdict, gen_s, n_calls, detection_step = audit_incremental(
                 model, tokenizer, rec, args.max_new_tokens, args.temperature,
-                args.prompt_version,
             )
 
             row = {

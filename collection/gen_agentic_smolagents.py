@@ -8,8 +8,8 @@ Architecture:
 All agents and tools are built-in Smolagents components.
 
 Usage:
-    python -m scripts.generation.agentic.gen_agentic_smolagents --domain hotpotqa --num_tasks 2 --output_dir tmp/agentic_traj
-    python -m scripts.generation.agentic.gen_agentic_smolagents --domain gaia --num_tasks 2 --output_dir tmp/agentic_traj
+    python -m collection.gen_agentic_smolagents --domain hotpotqa --dataset /path/to/hotpotqa --num_tasks 2
+    python -m collection.gen_agentic_smolagents --domain gaia --dataset /path/to/gaia --gaia-files-dir /path/to/files --num_tasks 2
 """
 import argparse
 import ast

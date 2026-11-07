@@ -2,7 +2,7 @@
 
 The AFTraj parquets contain the curated trajectories and labels. The public
 split manifest identifies the paper evaluation IDs. This script expands the
-remaining trajectories into the V16 boundary prompts and V15-style GRPO rows.
+remaining trajectories into BPPO boundary prompts and GRPO rows.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 from datasets import Dataset
 
-from training.prompts import SYSTEM_PROMPT_V16, build_prompt, build_prompt_incremental
+from training.prompts import SYSTEM_PROMPT, build_prompt, build_prompt_incremental
 
 
 TOOLSAFETY_PREFIXES = (
@@ -33,12 +33,12 @@ def source_domain(conv_id: str) -> str:
         if conv_id.startswith(name + "_"):
             return name
     if conv_id.startswith(TOOLSAFETY_PREFIXES):
-        return "v15_toolsafety"
-    return "v15_expert_team"
+        return "toolsafety"
+    return "expert_team"
 
 
 def family_id(conv_id: str, domain: str) -> str:
-    if domain.startswith("v15_"):
+    if domain in {"toolsafety", "expert_team"}:
         match = re.search(r"_idx(\d+)$", conv_id)
         if not match:
             raise ValueError(f"Missing task index in {conv_id}")
@@ -126,7 +126,7 @@ def to_verl(record: dict, split: str, index: int, sample_type: str,
     return {
         "data_source": "agentforesight_audit",
         "prompt": [
-            {"role": "system", "content": SYSTEM_PROMPT_V16},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
         "ability": "audit",
@@ -182,7 +182,7 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for filename, rows in (
         ("grpo_train.parquet", grpo),
-        ("dpo_boundary_prompts.parquet", boundary),
+        ("bppo_boundary_prompts.parquet", boundary),
         ("grpo_validation.parquet", validation),
     ):
         Dataset.from_list(rows).to_parquet(str(args.output_dir / filename))

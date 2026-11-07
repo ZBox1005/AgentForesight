@@ -1,9 +1,8 @@
-"""Paper V16 prompt and parser for online auditing.
+"""Paper prompt and response parser for online auditing.
 
-The prompt is imported from the Stage 2 training package so inference uses the
-same text and trajectory formatting. The answer parser mirrors the paper's
-final internal evaluator: a parseable SAFE verdict continues the prefix walk;
-the first parseable nonnegative step is an alarm.
+The prompt is imported from the training package so inference uses the same
+text and trajectory formatting. A parseable SAFE verdict continues the prefix
+walk; the first parseable nonnegative step is an alarm.
 """
 
 from __future__ import annotations
@@ -14,28 +13,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from training.prompts import (
-    SYSTEM_PROMPT_V16 as SYSTEM_PROMPT,
     build_messages as _build_full_messages,
     build_messages_incremental as _build_incremental_messages,
-)
-from training.prompts_v15 import (
-    build_messages as _build_full_messages_v15,
-    build_messages_incremental as _build_incremental_messages_v15,
 )
 
 
 def build_messages(turns: list[dict], tools: list[dict] | None = None,
-                   current_step: int | None = None,
-                   prompt_version: str = "v16") -> list[dict]:
-    if prompt_version == "v15":
-        full, incremental = _build_full_messages_v15, _build_incremental_messages_v15
-    elif prompt_version == "v16":
-        full, incremental = _build_full_messages, _build_incremental_messages
-    else:
-        raise ValueError(f"unknown prompt version: {prompt_version}")
+                   current_step: int | None = None) -> list[dict]:
     if current_step is None:
-        return full(turns, tools=tools, task_description=None)
-    return incremental(
+        return _build_full_messages(turns, tools=tools, task_description=None)
+    return _build_incremental_messages(
         turns, current_step=current_step, tools=tools, task_description=None,
     )
 

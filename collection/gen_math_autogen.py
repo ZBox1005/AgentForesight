@@ -5,7 +5,7 @@ Agents: MathSolver ↔ Verifier (Handoff-based Swarm pattern)
 Uses OpenAI API (GPT-5.4-mini or GPT-4.1) via AutoGen's native OpenAIChatCompletionClient.
 
 Usage:
-    python -m scripts.generation.math.gen_math_autogen --num_tasks 2 --output_dir /tmp/math_traj
+    python -m collection.gen_math_autogen --dataset /path/to/MATH500 --num_tasks 2
 """
 import asyncio
 import argparse
@@ -51,8 +51,9 @@ def compute(expression: str) -> str:
     import sympy
     import math
     import keyword
+    # Imported symbols enter the evaluation namespace through locals().
     from sympy import (symbols, solve, simplify, expand, factor, factorint, sqrt,
-                       pi, oo, E, I, Rational, Integer, Float, S, N,
+                       pi, oo, E, I, Rational, Integer, Float, S,
                        sin, cos, tan, asin, acos, atan, atan2, cot, sec, csc,
                        log, ln, exp, diff, integrate, limit, series,
                        Matrix, det, Transpose, Inverse, eye, zeros, ones, diag,
@@ -382,11 +383,6 @@ def extract_trajectory(task_result) -> list[dict]:
     return steps
 
 
-def check_answer_match(pred: str, gold: str) -> bool:
-    """Check if predicted answer matches ground truth, handling LaTeX format differences."""
-    return math_answers_equivalent(pred, gold)
-
-
 def extract_final_answer(task_result) -> str:
     """Extract ANSWER_VERIFIED: <answer> from the trajectory."""
     for msg in reversed(task_result.messages):
@@ -462,7 +458,7 @@ async def main():
 
         elapsed = round(time.time() - start, 2)
 
-        is_correct = check_answer_match(pred, gold) if pred else False
+        is_correct = math_answers_equivalent(pred, gold) if pred else False
         if is_correct:
             n_correct += 1
 
