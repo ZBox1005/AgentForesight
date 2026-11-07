@@ -1,0 +1,17 @@
+# Versions recorded in the collection environment snapshot.
+datasets==4.8.4
+sympy==1.14.0
+openai==2.46.0
+litellm==1.82.6
+ddgs==9.12.0
+duckduckgo_search==8.1.1
+openpyxl==3.1.5
+pdfplumber==0.11.9
+python-docx==0.8.11
+python-pptx==1.0.2
+pillow==12.1.1
+wikipedia==1.4.0
+-e git+https://github.com/microsoft/autogen.git@8544314fa6cc9f906c3ec2395927f5404ffbb5eb#egg=autogen_agentchat&subdirectory=python/packages/autogen-agentchat
+-e git+https://github.com/microsoft/autogen.git@8544314fa6cc9f906c3ec2395927f5404ffbb5eb#egg=autogen_core&subdirectory=python/packages/autogen-core
+-e git+https://github.com/microsoft/autogen.git@8544314fa6cc9f906c3ec2395927f5404ffbb5eb#egg=autogen_ext&subdirectory=python/packages/autogen-ext
+-e git+https://github.com/huggingface/smolagents.git@edb04feae012c1a96774c2e19066cd24046f8fba#egg=smolagents

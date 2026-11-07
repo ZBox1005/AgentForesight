@@ -86,7 +86,7 @@ python -m inference.infer_api \
     --paper-test-split --macro-domain
 ```
 
-Both commands query each trajectory prefix in sequence and stop at the first parseable alarm. The local command uses the paper's V16 prompt; the API command defaults to the V15 baseline prompt. The published AFTraj parquet normalizes tool-call IDs, so rerunning inference from it may not reproduce the exact original token stream. The reported model was also periodically evaluated on the same 332-trajectory paper test split during Stage 2 training; treat it as a reported evaluation split, not an untouched final test set.
+Both commands query each trajectory prefix in sequence and stop at the first parseable alarm. The local command uses the paper's V16 prompt; the API command defaults to the V15 baseline prompt.
 
 ## Main Results
 
@@ -100,7 +100,11 @@ To check the metric code against the saved paper decisions without a GPU, run `p
 
 ## Training recipe
 
-The Stage 1 DPO/BPPO trainer, Stage 2 GRPO configuration, V16 reward, and prompt builders are in [`training/`](training/). See [`training/README.md`](training/README.md) for inputs, versions, and the release status of the processed training artifacts. The original processed inputs are under provenance review and are not yet part of the public release.
+The Stage 1 DPO/BPPO trainer, Stage 2 GRPO configuration, V16 reward, prompt builders, and a script to prepare training inputs from the public AFTraj dataset are in [`training/`](training/). See [`training/README.md`](training/README.md) for the data preparation and training commands.
+
+## Trajectory collection
+
+The Math AutoGen Swarm and Agentic smolagents rollout scripts, including role prompts and tools, are in [`collection/`](collection/). See [`collection/README.md`](collection/README.md) for the task-data inputs and commands.
 
 ## Repository Structure
 
@@ -116,6 +120,7 @@ AgentForesight/
 │   ├── infer_local.py    # local-model auditor inference (transformers)
 │   └── infer_api.py      # OpenAI-compatible API auditor inference
 ├── training/             # Stage 1 DPO and Stage 2 GRPO recipe
+├── collection/           # Math AutoGen and Agentic smolagents rollouts
 ├── scripts/verify_paper_metrics.py
 ├── results/paper_test_predictions.jsonl
 └── assets/
