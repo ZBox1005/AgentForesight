@@ -21,9 +21,9 @@ from training.prompts import (
 def build_messages(turns: list[dict], tools: list[dict] | None = None,
                    current_step: int | None = None) -> list[dict]:
     if current_step is None:
-        return _build_full_messages(turns, tools=tools, task_description=None)
+        return _build_full_messages(turns, tools=tools)
     return _build_incremental_messages(
-        turns, current_step=current_step, tools=tools, task_description=None,
+        turns, current_step=current_step, tools=tools,
     )
 
 
