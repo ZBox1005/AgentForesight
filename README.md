@@ -4,18 +4,21 @@
 
 ## Online Auditing for Early Failure Prediction in Multi-Agent Systems
 
+<p><a href="https://neurips.cc/Conferences/2026"><img alt="Accepted at NeurIPS 2026" src="https://img.shields.io/badge/Accepted-NeurIPS%202026-101768?style=for-the-badge"></a></p>
+
 <a href="https://arxiv.org/abs/2605.08715"><img alt="Paper" src="https://img.shields.io/badge/Paper-arXiv-B31B1B?style=for-the-badge&amp;logo=arxiv&amp;logoColor=white"></a>
-<a href="https://zbox1005.github.io/agent-foresight/"><img alt="Project page" src="https://img.shields.io/badge/Project-Page-2F6DB5?style=for-the-badge&amp;logo=githubpages&amp;logoColor=white"></a>
+<a href="https://zbox1005.github.io/agent-foresight/"><img alt="Project page" src="https://img.shields.io/badge/Project-Page-008F9B?style=for-the-badge&amp;logo=githubpages&amp;logoColor=white"></a>
 <a href="https://huggingface.co/ZBox008003/AgentForesight-7B"><img alt="Model weights" src="https://img.shields.io/badge/Model-Weights-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=black"></a>
 <a href="https://huggingface.co/datasets/ZBox008003/AFTraj"><img alt="Dataset" src="https://img.shields.io/badge/Dataset-AFTraj--2K-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=black"></a>
 <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge&amp;logo=opensourceinitiative&amp;logoColor=white"></a>
 
 </div>
 
-## Updates
+## 🔥 Updates
 
-- **November 7, 2026:** Released the AgentForesight-7B model weights, BPPO and GRPO training code, public data preparation scripts, and trajectory collection scripts.
-- **May 9, 2026:** Released the AgentForesight repository with inference and evaluation code and the AFTraj-2K dataset.
+- 🔥 **Nov 7, 2026:** Released the AgentForesight-7B model weights, BPPO and GRPO training code, public data preparation scripts, and trajectory collection scripts.
+- 🔥 **Sep 24, 2026:** AgentForesight was accepted at NeurIPS 2026.
+- 🔥 **May 9, 2026:** Released the AgentForesight repository with inference and evaluation code and the AFTraj-2K dataset.
 
 ## Overview
 
