@@ -1,17 +1,21 @@
 <div align="center">
 
-<img src="assets/logo_full.png" width="560">
+<img src="assets/logo_full.png" alt="AgentForesight" width="560">
 
 ## Online Auditing for Early Failure Prediction in Multi-Agent Systems
 
-[![arXiv](https://img.shields.io/badge/arXiv-2605.08715-b31b1b)](https://arxiv.org/abs/2605.08715)
-[![Project Page](https://img.shields.io/badge/Project_Page-website-blue)](https://zbox1005.github.io/agent-foresight/)
-[![Dataset](https://img.shields.io/badge/🤗_Dataset-AFTraj-yellow)](https://huggingface.co/datasets/ZBox008003/AFTraj)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+<a href="https://arxiv.org/abs/2605.08715"><img alt="Paper" src="https://img.shields.io/badge/Paper-arXiv-B31B1B?style=for-the-badge&amp;logo=arxiv&amp;logoColor=white"></a>
+<a href="https://zbox1005.github.io/agent-foresight/"><img alt="Project page" src="https://img.shields.io/badge/Project-Page-2F6DB5?style=for-the-badge&amp;logo=githubpages&amp;logoColor=white"></a>
+<a href="https://huggingface.co/ZBox008003/AgentForesight-7B"><img alt="Model weights" src="https://img.shields.io/badge/Model-Weights-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=black"></a>
+<a href="https://huggingface.co/datasets/ZBox008003/AFTraj"><img alt="Dataset" src="https://img.shields.io/badge/Dataset-AFTraj--2K-FFD21E?style=for-the-badge&amp;logo=huggingface&amp;logoColor=black"></a>
+<a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge&amp;logo=opensourceinitiative&amp;logoColor=white"></a>
 
 </div>
 
----
+## Updates
+
+- **November 7, 2026:** Released the AgentForesight-7B model weights, BPPO and GRPO training code, public data preparation scripts, and trajectory collection scripts.
+- **May 9, 2026:** Released the AgentForesight repository with inference and evaluation code and the AFTraj-2K dataset.
 
 ## Overview
 
@@ -70,7 +74,7 @@ print(unsafe.iloc[0][["conv_id", "domain", "mistake_step", "mistake_agent"]])
 Local model (transformers):
 ```bash
 python -m inference.infer_local \
-    --model-path  <hf_repo_or_local_path> \
+    --model-path  ZBox008003/AgentForesight-7B \
     --data-dir    <path_to_dataset> \
     --output-dir  ./outputs/auditor_local \
     --paper-test-split --macro-domain
