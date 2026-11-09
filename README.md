@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo_full.png" alt="AgentForesight" width="500">
+<img src="assets/logo_full.png" alt="AgentForesight" width="600">
 
 ## Online Auditing for Early Failure Prediction in Multi-Agent Systems
 
